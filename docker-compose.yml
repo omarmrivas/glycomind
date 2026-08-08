@@ -1,0 +1,65 @@
+name: glycomind
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: glycomind-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-glycomind}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-glycomind}
+      POSTGRES_DB: ${POSTGRES_DB:-glycomind}
+      # Todos los timestamps se manejan en UTC; la zona local vive en tz_offset_min.
+      TZ: UTC
+      PGTZ: UTC
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-glycomind} -d ${POSTGRES_DB:-glycomind}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    container_name: glycomind-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-glycomind}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-glycomind123}
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  grafana:
+    image: grafana/grafana-oss:latest
+    container_name: glycomind-grafana
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GLYCOMIND_DB_USER: ${POSTGRES_USER:-glycomind}
+      GLYCOMIND_DB_PASSWORD: ${POSTGRES_PASSWORD:-glycomind}
+      GLYCOMIND_DB_NAME: ${POSTGRES_DB:-glycomind}
+    ports:
+      - "${GRAFANA_PORT:-3000}:3000"
+    volumes:
+      - grafanadata:/var/lib/grafana
+      - ./deploy/grafana/provisioning:/etc/grafana/provisioning:ro
+
+volumes:
+  pgdata:
+  miniodata:
+  grafanadata:

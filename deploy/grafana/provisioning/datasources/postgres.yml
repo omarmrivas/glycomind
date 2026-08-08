@@ -1,0 +1,17 @@
+apiVersion: 1
+
+datasources:
+  - name: GlycoMind
+    type: postgres
+    uid: glycomind-pg
+    url: postgres:5432
+    user: ${GLYCOMIND_DB_USER}
+    secureJsonData:
+      password: ${GLYCOMIND_DB_PASSWORD}
+    jsonData:
+      database: ${GLYCOMIND_DB_NAME}
+      sslmode: disable
+      postgresVersion: 1700
+      timescaledb: false
+    isDefault: true
+    editable: true
