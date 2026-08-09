@@ -1,0 +1,25 @@
+# Secretos y datos de salud: NUNCA dentro de la imagen.
+.env
+data/
+*.csv
+
+.git/
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+docs/
+deploy/
+Dockerfile
+.dockerignore
+docker-compose*.yml
+# README.md NO se excluye: pyproject.toml lo declara como readme y hatchling
+# falla al construir el paquete si no esta.

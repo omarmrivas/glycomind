@@ -53,53 +53,65 @@ RAG científico, recomendaciones. Están diseñados en `docs/`, no implementados
 
 ## Arranque rápido
 
+Un solo comando, idéntico en Windows, macOS y Linux. Lo único que necesitas es Docker.
+
 ```bash
-docker compose up -d postgres
+docker compose up -d
+```
+
+Eso levanta Postgres, aplica las migraciones y las vistas, y arranca la API. **No hace
+falta crear `.env`**: cada variable tiene su valor por defecto en `docker-compose.yml`.
+La API no arranca hasta que las migraciones terminan con éxito, así que nunca se sirve
+contra un esquema viejo.
+
+| Servicio | URL |
+|---|---|
+| API + documentación interactiva | http://localhost:8000/docs |
+| Grafana | http://localhost:3000 (`admin` / `admin`) |
+| MinIO | http://localhost:9001 |
+
+### Ver el pipeline funcionando sin esperar 14 días de sensor
+
+```bash
+docker compose run --rm demo
+```
+
+Genera datos sintéticos, los importa, los analiza e imprime el reporte. Está bajo un
+perfil aparte a propósito: son datos falsos y no deben mezclarse con los reales por
+accidente. Repetir el comando es inocuo — de hecho es una buena forma de comprobar que
+la ingesta es idempotente.
+
+### Usar el CLI
+
+Se ejecuta dentro del contenedor de la API, así que no depende del sistema operativo
+ni de tener Python instalado:
+
+```bash
+docker compose exec api glycomind --help
 ```
 
 ```bash
-cp .env.example .env && uv sync --all-groups && uv run alembic upgrade head
+docker compose exec api glycomind user create --email tu@correo.com --timezone America/Mexico_City
+```
+
+Los archivos se intercambian por la carpeta `./data`, que está montada dentro del
+contenedor (y está en `.gitignore`):
+
+```bash
+docker compose exec api glycomind import-libreview data/tu-export.csv --user tu@correo.com
 ```
 
 ```bash
-uv run glycomind db apply-views
+docker compose exec api glycomind analyze --user tu@correo.com
 ```
 
-Con datos sintéticos, para ver el pipeline entero funcionando sin esperar 14 días de sensor:
+Para parar todo:
 
 ```bash
-uv run python scripts/make_demo_csv.py data/demo.csv
+docker compose down
 ```
 
-```bash
-uv run glycomind user create --email tu@correo.com --timezone America/Mexico_City
-```
-
-```bash
-uv run glycomind import-libreview data/demo.csv --user tu@correo.com
-```
-
-```bash
-uv run glycomind meal import data/demo.meals.txt --user tu@correo.com
-```
-
-```bash
-uv run glycomind analyze --user tu@correo.com
-```
-
-```bash
-uv run glycomind report --user tu@correo.com
-```
-
-API y dashboards:
-
-```bash
-uv run uvicorn glycomind.api.main:app --reload
-```
-
-```bash
-docker compose up -d grafana
-```
+Añade `-v` a ese último comando si además quieres borrar la base de datos.
 
 ---
 
@@ -111,7 +123,11 @@ docker compose up -d grafana
 3. **No abras el CSV en Excel.** Abbott advierte que volver a guardarlo cambia el formato.
    El parser detecta los síntomas (separador `;`, coma decimal, fechas reformateadas) y
    avisa, pero es mejor no arriesgarse.
-4. `uv run glycomind import-libreview <archivo> --user <correo>`
+4. Copia el CSV a la carpeta `data/` del repo y ejecuta:
+
+```bash
+docker compose exec api glycomind import-libreview data/tu-export.csv --user tu@correo.com
+```
 
 Reimportar rangos solapados es seguro: la ingesta es idempotente por
 `(user_id, ts_utc, session_id)` y te dice cuántas lecturas son realmente nuevas.
@@ -148,6 +164,22 @@ docs/                    Diseño completo del sistema (fases 1–5)
 
 ## Desarrollo
 
+Para trabajar en el código conviene tener el intérprete en el host y dejar solo la
+infraestructura en contenedores. Postgres expone el puerto 5432, así que los tests de
+integración corren contra el mismo Postgres del stack.
+
+```bash
+docker compose up -d postgres
+```
+
+```bash
+uv sync --all-groups
+```
+
+```bash
+uv run alembic upgrade head
+```
+
 ```bash
 uv run pytest -q
 ```
@@ -156,7 +188,29 @@ uv run pytest -q
 uv run ruff check . && uv run ruff format --check .
 ```
 
-Los tests de `test_integration.py` necesitan PostgreSQL; se omiten solos si no está.
+Servidor con recarga automática:
+
+```bash
+uv run uvicorn glycomind.api.main:app --reload
+```
+
+Notas de plataforma:
+
+- **Windows**: todo lo anterior funciona igual en PowerShell y en Git Bash. El CLI fuerza
+  UTF-8 en su salida, así que los símbolos `Δ` y `≥` se imprimen bien aunque la consola
+  esté en cp1252. En PowerShell, `uv` escribe su progreso a stderr y eso puede aparecer
+  como error aunque el comando haya funcionado: mira el código de salida, no el color.
+- El archivo `.env` es **opcional**. Solo hace falta si quieres cambiar puertos o
+  credenciales; parte de `.env.example`. Las variables definidas en `docker-compose.yml`
+  tienen prioridad dentro de los contenedores, así que un `.env` apuntando a `localhost`
+  no los rompe.
+- Los tests de `test_integration.py` necesitan PostgreSQL; se omiten solos si no está.
+
+Tras cambiar código, la imagen se reconstruye con:
+
+```bash
+docker compose up -d --build
+```
 
 ### Dos reglas del repo
 

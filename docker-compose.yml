@@ -1,5 +1,37 @@
 name: glycomind
 
+# Arranque completo en cualquier sistema operativo:
+#
+#     docker compose up -d
+#
+# No hace falta crear .env: cada variable trae su valor por defecto. Para producir
+# datos de demostracion y ver el pipeline entero funcionando:
+#
+#     docker compose run --rm demo
+#
+# ('run' y no 'up demo': 'up' reutiliza el contenedor ya terminado y no vuelve a
+# ejecutar el guion.)
+#
+# El CLI se ejecuta dentro del contenedor de la API:
+#
+#     docker compose exec api glycomind --help
+
+x-app: &app
+  build:
+    context: .
+    dockerfile: Dockerfile
+  environment: &app-env
+    # 'postgres' es el nombre del servicio en la red de compose, no localhost.
+    # Esta variable de entorno tiene prioridad sobre cualquier .env local, asi que
+    # un .env apuntando a localhost no rompe los contenedores.
+    GLYCOMIND_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-glycomind}:${POSTGRES_PASSWORD:-glycomind}@postgres:5432/${POSTGRES_DB:-glycomind}
+    GLYCOMIND_DEFAULT_TIMEZONE: ${GLYCOMIND_DEFAULT_TIMEZONE:-America/Mexico_City}
+  volumes:
+    # Unico punto de intercambio con el host: aqui se deja el CSV de LibreView y
+    # aqui salen las exportaciones. Esta en .gitignore y en .dockerignore.
+    - ./data:/app/data
+  networks: [glycomind]
+
 services:
   postgres:
     image: postgres:17-alpine
@@ -8,10 +40,11 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-glycomind}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-glycomind}
       POSTGRES_DB: ${POSTGRES_DB:-glycomind}
-      # Todos los timestamps se manejan en UTC; la zona local vive en tz_offset_min.
+      # Todos los timestamps se guardan en UTC; la hora local vive en tz_offset_min.
       TZ: UTC
       PGTZ: UTC
     ports:
+      # Expuesto para poder correr los tests de integracion desde el host.
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -19,7 +52,38 @@ services:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-glycomind} -d ${POSTGRES_DB:-glycomind}"]
       interval: 5s
       timeout: 5s
-      retries: 10
+      retries: 12
+    networks: [glycomind]
+    restart: unless-stopped
+
+  # Aplica migraciones y vistas, y termina. La API no arranca hasta que este
+  # servicio sale con codigo 0, asi que nunca se sirve contra un esquema viejo.
+  migrate:
+    <<: *app
+    container_name: glycomind-migrate
+    command: >-
+      sh -c "alembic upgrade head && glycomind db apply-views"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    <<: *app
+    container_name: glycomind-api
+    command:
+      - uvicorn
+      - glycomind.api.main:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+    ports:
+      - "${API_PORT:-8000}:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
 
   minio:
     image: minio/minio:latest
@@ -38,6 +102,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
+    networks: [glycomind]
+    restart: unless-stopped
 
   grafana:
     image: grafana/grafana-oss:latest
@@ -58,8 +124,35 @@ services:
     volumes:
       - grafanadata:/var/lib/grafana
       - ./deploy/grafana/provisioning:/etc/grafana/provisioning:ro
+    networks: [glycomind]
+    restart: unless-stopped
+
+  # Datos SINTETICOS para ver el pipeline funcionando sin esperar 14 dias de sensor.
+  # Bajo perfil a proposito: no debe mezclarse con datos reales por accidente.
+  #     docker compose --profile demo up demo
+  demo:
+    <<: *app
+    container_name: glycomind-demo
+    profiles: [demo]
+    environment:
+      <<: *app-env
+      DEMO_EMAIL: ${DEMO_EMAIL:-demo@glycomind.local}
+    command: >-
+      sh -c "python scripts/make_demo_csv.py data/demo.csv
+      && glycomind user create --email $$DEMO_EMAIL
+      && glycomind import-libreview data/demo.csv --user $$DEMO_EMAIL
+      && glycomind meal import data/demo.meals.txt --user $$DEMO_EMAIL
+      && glycomind analyze --user $$DEMO_EMAIL
+      && glycomind report --user $$DEMO_EMAIL --limit 10"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
 
 volumes:
   pgdata:
   miniodata:
   grafanadata:
+
+networks:
+  glycomind:
