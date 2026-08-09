@@ -1,0 +1,687 @@
+# Catalogo semilla de alimentos de consumo habitual en Mexico.
+#
+# IMPORTANTE — que hay y que NO hay aqui:
+#
+#   * SI: identidades, alias (incluidos plurales y regionalismos), categoria,
+#     descomposicion de platillos en ingredientes, y una porcion por defecto.
+#   * NO: valores de macronutrientes. Los macros se importan de FoodData Central con
+#     su ``fdc_query`` y quedan registrados con fuente y referencia en food_nutrient.
+#     Escribirlos a mano seria inventar datos nutricionales.
+#
+# ``default_portion_g`` es un PUNTO DE PARTIDA, no una medicion. Se sobreescribe por
+# usuario en user_food_portion en cuanto haya una porcion calibrada: contar objetos
+# discretos ("2 tortillas") es mucho mas fiable que estimar volumen.
+
+foods:
+  # ---------------------------------------------------------------- cereales
+  - slug: tortilla-maiz
+    name: Tortilla de maíz
+    category: cereal
+    aliases: [tortilla, tortillas, tortilla de maiz, tortillas de maiz, tortilla de nixtamal]
+    default_portion_g: 30
+    portion_unit: pieza
+    fdc_query: "tortillas, ready-to-bake or -fry, corn"
+
+  - slug: tortilla-harina
+    name: Tortilla de harina
+    category: cereal
+    aliases: [tortilla de harina, tortillas de harina, tortilla de trigo]
+    default_portion_g: 42
+    portion_unit: pieza
+    fdc_query: "tortillas, ready-to-bake or -fry, flour"
+
+  - slug: arroz-blanco
+    name: Arroz blanco cocido
+    category: cereal
+    aliases: [arroz, arroz blanco, arroz cocido]
+    default_portion_g: 150
+    portion_unit: taza
+    fdc_query: "rice, white, long-grain, regular, enriched, cooked"
+
+  - slug: arroz-integral
+    name: Arroz integral cocido
+    category: cereal
+    aliases: [arroz integral]
+    default_portion_g: 150
+    portion_unit: taza
+    fdc_query: "rice, brown, long-grain, cooked"
+
+  - slug: bolillo
+    name: Bolillo / pan blanco
+    category: cereal
+    aliases: [bolillo, bolillos, pan blanco, telera, pan]
+    default_portion_g: 60
+    portion_unit: pieza
+    fdc_query: "bread, white, commercially prepared"
+
+  - slug: pan-integral
+    name: Pan integral
+    category: cereal
+    aliases: [pan integral, pan de caja integral]
+    default_portion_g: 28
+    portion_unit: rebanada
+    fdc_query: "bread, whole-wheat, commercially prepared"
+
+  - slug: avena
+    name: Avena cocida
+    category: cereal
+    aliases: [avena, hojuelas de avena, avena cocida]
+    default_portion_g: 234
+    portion_unit: taza
+    fdc_query: "cereals, oats, regular and quick, unenriched, cooked with water"
+
+  - slug: pasta
+    name: Pasta cocida
+    category: cereal
+    aliases: [pasta, espagueti, spaghetti, macarrones, fideo, sopa de pasta]
+    default_portion_g: 140
+    portion_unit: taza
+    fdc_query: "pasta, cooked, enriched"
+
+  - slug: totopos
+    name: Totopos de maíz
+    category: cereal
+    aliases: [totopo, totopos, tostada, tostadas, chips de maiz]
+    default_portion_g: 28
+    portion_unit: porcion
+    fdc_query: "snacks, tortilla chips, plain, white corn"
+
+  - slug: masa-tamal
+    name: Tamal de maíz
+    category: cereal
+    aliases: [tamal, tamales]
+    default_portion_g: 110
+    portion_unit: pieza
+    fdc_query: "tamale, corn"
+
+  - slug: quinoa
+    name: Quinoa cocida
+    category: cereal
+    aliases: [quinoa, quinua]
+    default_portion_g: 185
+    portion_unit: taza
+    fdc_query: "quinoa, cooked"
+
+  - slug: amaranto
+    name: Amaranto
+    category: cereal
+    aliases: [amaranto, alegria]
+    default_portion_g: 30
+    portion_unit: porcion
+    fdc_query: "amaranth grain, cooked"
+
+  # ---------------------------------------------------------------- tuberculos
+  - slug: papa
+    name: Papa cocida
+    category: tuberculo
+    aliases: [papa, papas, patata, papa cocida]
+    default_portion_g: 150
+    portion_unit: pieza
+    fdc_query: "potatoes, boiled, cooked without skin, flesh, without salt"
+
+  - slug: camote
+    name: Camote
+    category: tuberculo
+    aliases: [camote, batata, boniato]
+    default_portion_g: 150
+    portion_unit: pieza
+    fdc_query: "sweet potato, cooked, boiled, without skin"
+
+  - slug: elote
+    name: Elote / maíz en grano
+    category: tuberculo
+    aliases: [elote, elotes, maiz, granos de elote]
+    default_portion_g: 165
+    portion_unit: pieza
+    fdc_query: "corn, sweet, yellow, cooked, boiled, drained, without salt"
+
+  # ---------------------------------------------------------------- leguminosas
+  - slug: frijol-negro
+    name: Frijol negro cocido
+    category: leguminosa
+    aliases: [frijol, frijoles, frijol negro, frijoles negros, frijoles de la olla]
+    default_portion_g: 172
+    portion_unit: taza
+    fdc_query: "beans, black, mature seeds, cooked, boiled, without salt"
+
+  - slug: frijol-bayo
+    name: Frijol bayo / pinto cocido
+    category: leguminosa
+    aliases: [frijol bayo, frijoles bayos, frijol pinto, frijoles pintos, frijol peruano]
+    default_portion_g: 171
+    portion_unit: taza
+    fdc_query: "beans, pinto, mature seeds, cooked, boiled, without salt"
+
+  - slug: lenteja
+    name: Lenteja cocida
+    category: leguminosa
+    aliases: [lenteja, lentejas, sopa de lentejas]
+    default_portion_g: 198
+    portion_unit: taza
+    fdc_query: "lentils, mature seeds, cooked, boiled, without salt"
+
+  - slug: garbanzo
+    name: Garbanzo cocido
+    category: leguminosa
+    aliases: [garbanzo, garbanzos]
+    default_portion_g: 164
+    portion_unit: taza
+    fdc_query: "chickpeas, mature seeds, cooked, boiled, without salt"
+
+  - slug: haba
+    name: Haba cocida
+    category: leguminosa
+    aliases: [haba, habas]
+    default_portion_g: 170
+    portion_unit: taza
+    fdc_query: "broadbeans, fava beans, mature seeds, cooked, boiled, without salt"
+
+  # ---------------------------------------------------------------- proteinas
+  - slug: pollo-pechuga
+    name: Pechuga de pollo
+    category: proteina
+    aliases: [pollo, pechuga, pechuga de pollo, pollo asado, pollo a la plancha]
+    default_portion_g: 120
+    portion_unit: porcion
+    fdc_query: "chicken, broilers or fryers, breast, meat only, cooked, roasted"
+
+  - slug: huevo
+    name: Huevo
+    category: proteina
+    aliases: [huevo, huevos, huevo estrellado, huevos estrellados, huevo revuelto, huevos revueltos]
+    default_portion_g: 50
+    portion_unit: pieza
+    fdc_query: "egg, whole, cooked, hard-boiled"
+
+  - slug: carne-res
+    name: Carne de res
+    category: proteina
+    aliases: [res, carne de res, bistec, bistek, carne asada, arrachera]
+    default_portion_g: 120
+    portion_unit: porcion
+    fdc_query: "beef, round, top round steak, boneless, separable lean only, cooked, grilled"
+
+  - slug: carne-cerdo
+    name: Carne de cerdo
+    category: proteina
+    aliases: [cerdo, puerco, carne de cerdo, lomo de cerdo, carnitas]
+    default_portion_g: 120
+    portion_unit: porcion
+    fdc_query: "pork, fresh, loin, center loin, separable lean only, cooked, roasted"
+
+  - slug: pescado
+    name: Pescado
+    category: proteina
+    aliases: [pescado, filete de pescado, tilapia, mojarra, huachinango]
+    default_portion_g: 120
+    portion_unit: porcion
+    fdc_query: "fish, tilapia, cooked, dry heat"
+
+  - slug: atun
+    name: Atún en agua
+    category: proteina
+    aliases: [atun, atun en agua, lata de atun]
+    default_portion_g: 100
+    portion_unit: porcion
+    fdc_query: "fish, tuna, light, canned in water, drained solids"
+
+  - slug: chorizo
+    name: Chorizo
+    category: proteina
+    aliases: [chorizo, longaniza]
+    default_portion_g: 60
+    portion_unit: porcion
+    fdc_query: "pork sausage, chorizo"
+
+  - slug: queso-fresco
+    name: Queso fresco / panela
+    category: lacteo
+    aliases: [queso, queso fresco, queso panela, panela, requeson]
+    default_portion_g: 40
+    portion_unit: porcion
+    fdc_query: "cheese, queso fresco"
+
+  - slug: queso-oaxaca
+    name: Queso Oaxaca
+    category: lacteo
+    aliases: [queso oaxaca, quesillo, queso de hebra]
+    default_portion_g: 40
+    portion_unit: porcion
+    fdc_query: "cheese, mozzarella, whole milk, low moisture"
+
+  # ---------------------------------------------------------------- grasas
+  - slug: aguacate
+    name: Aguacate
+    category: grasa
+    aliases: [aguacate, palta, medio aguacate]
+    default_portion_g: 100
+    portion_unit: pieza
+    fdc_query: "avocados, raw, all commercial varieties"
+
+  - slug: aceite-vegetal
+    name: Aceite vegetal
+    category: grasa
+    aliases: [aceite, aceite vegetal, aceite de oliva, aceite de maiz]
+    default_portion_g: 14
+    portion_unit: cucharada
+    fdc_query: "oil, olive, salad or cooking"
+
+  - slug: crema
+    name: Crema
+    category: grasa
+    aliases: [crema, crema acida, media crema]
+    default_portion_g: 30
+    portion_unit: cucharada
+    fdc_query: "cream, sour, cultured"
+
+  - slug: cacahuate
+    name: Cacahuate
+    category: grasa
+    aliases: [cacahuate, cacahuates, mani]
+    default_portion_g: 28
+    portion_unit: porcion
+    fdc_query: "peanuts, all types, dry-roasted, without salt"
+
+  - slug: nuez
+    name: Nuez
+    category: grasa
+    aliases: [nuez, nueces, nuez de castilla]
+    default_portion_g: 28
+    portion_unit: porcion
+    fdc_query: "nuts, walnuts, english"
+
+  - slug: almendra
+    name: Almendra
+    category: grasa
+    aliases: [almendra, almendras]
+    default_portion_g: 28
+    portion_unit: porcion
+    fdc_query: "nuts, almonds"
+
+  # ---------------------------------------------------------------- verduras
+  - slug: nopal
+    name: Nopal
+    category: verdura
+    aliases: [nopal, nopales, nopalitos]
+    default_portion_g: 100
+    portion_unit: taza
+    fdc_query: "nopales, cooked, without salt"
+
+  - slug: jitomate
+    name: Jitomate
+    category: verdura
+    aliases: [jitomate, jitomates, tomate rojo, tomate]
+    default_portion_g: 120
+    portion_unit: pieza
+    fdc_query: "tomatoes, red, ripe, raw, year round average"
+
+  - slug: cebolla
+    name: Cebolla
+    category: verdura
+    aliases: [cebolla, cebollas, cebolla blanca, cebolla morada]
+    default_portion_g: 60
+    portion_unit: porcion
+    fdc_query: "onions, raw"
+
+  - slug: chile-verde
+    name: Chile verde
+    category: verdura
+    aliases: [chile, chiles, chile verde, serrano, jalapeno, chile jalapeno]
+    default_portion_g: 20
+    portion_unit: pieza
+    fdc_query: "peppers, jalapeno, raw"
+
+  - slug: tomate-verde
+    name: Tomate verde / tomatillo
+    category: verdura
+    aliases: [tomate verde, tomatillo, tomatillos, tomates verdes]
+    default_portion_g: 100
+    portion_unit: porcion
+    fdc_query: "tomatillos, raw"
+
+  - slug: calabacita
+    name: Calabacita
+    category: verdura
+    aliases: [calabacita, calabacitas, calabaza italiana, zucchini]
+    default_portion_g: 120
+    portion_unit: taza
+    fdc_query: "squash, summer, zucchini, includes skin, cooked, boiled, drained"
+
+  - slug: ejote
+    name: Ejote
+    category: verdura
+    aliases: [ejote, ejotes, judias verdes]
+    default_portion_g: 125
+    portion_unit: taza
+    fdc_query: "beans, snap, green, cooked, boiled, drained, without salt"
+
+  - slug: lechuga
+    name: Lechuga
+    category: verdura
+    aliases: [lechuga, ensalada verde, ensalada]
+    default_portion_g: 70
+    portion_unit: taza
+    fdc_query: "lettuce, romaine, raw"
+
+  - slug: brocoli
+    name: Brócoli
+    category: verdura
+    aliases: [brocoli, brocolis]
+    default_portion_g: 150
+    portion_unit: taza
+    fdc_query: "broccoli, cooked, boiled, drained, without salt"
+
+  - slug: zanahoria
+    name: Zanahoria
+    category: verdura
+    aliases: [zanahoria, zanahorias]
+    default_portion_g: 80
+    portion_unit: pieza
+    fdc_query: "carrots, raw"
+
+  - slug: chayote
+    name: Chayote
+    category: verdura
+    aliases: [chayote, chayotes]
+    default_portion_g: 130
+    portion_unit: taza
+    fdc_query: "chayote, fruit, cooked, boiled, drained, without salt"
+
+  - slug: espinaca
+    name: Espinaca
+    category: verdura
+    aliases: [espinaca, espinacas]
+    default_portion_g: 100
+    portion_unit: taza
+    fdc_query: "spinach, cooked, boiled, drained, without salt"
+
+  # ---------------------------------------------------------------- frutas
+  - slug: platano
+    name: Plátano
+    category: fruta
+    aliases: [platano, platanos, banana, banano]
+    default_portion_g: 118
+    portion_unit: pieza
+    fdc_query: "bananas, raw"
+
+  - slug: manzana
+    name: Manzana
+    category: fruta
+    aliases: [manzana, manzanas]
+    default_portion_g: 180
+    portion_unit: pieza
+    fdc_query: "apples, raw, with skin"
+
+  - slug: papaya
+    name: Papaya
+    category: fruta
+    aliases: [papaya]
+    default_portion_g: 145
+    portion_unit: taza
+    fdc_query: "papayas, raw"
+
+  - slug: mango
+    name: Mango
+    category: fruta
+    aliases: [mango, mangos]
+    default_portion_g: 165
+    portion_unit: taza
+    fdc_query: "mangos, raw"
+
+  - slug: naranja
+    name: Naranja
+    category: fruta
+    aliases: [naranja, naranjas]
+    default_portion_g: 140
+    portion_unit: pieza
+    fdc_query: "oranges, raw, all commercial varieties"
+
+  - slug: sandia
+    name: Sandía
+    category: fruta
+    aliases: [sandia]
+    default_portion_g: 152
+    portion_unit: taza
+    fdc_query: "watermelon, raw"
+
+  - slug: guayaba
+    name: Guayaba
+    category: fruta
+    aliases: [guayaba, guayabas]
+    default_portion_g: 100
+    portion_unit: porcion
+    fdc_query: "guavas, common, raw"
+
+  - slug: fresa
+    name: Fresa
+    category: fruta
+    aliases: [fresa, fresas]
+    default_portion_g: 152
+    portion_unit: taza
+    fdc_query: "strawberries, raw"
+
+  # ---------------------------------------------------------------- lacteos
+  - slug: leche-entera
+    name: Leche entera
+    category: lacteo
+    aliases: [leche, leche entera]
+    default_portion_g: 244
+    portion_unit: vaso
+    fdc_query: "milk, whole, 3.25% milkfat, with added vitamin D"
+
+  - slug: leche-descremada
+    name: Leche descremada
+    category: lacteo
+    aliases: [leche descremada, leche light, leche sin grasa]
+    default_portion_g: 245
+    portion_unit: vaso
+    fdc_query: "milk, nonfat, fluid, with added vitamin A and vitamin D"
+
+  - slug: yogur-natural
+    name: Yogur natural
+    category: lacteo
+    aliases: [yogur, yoghurt, yogurt, yogur natural]
+    default_portion_g: 170
+    portion_unit: porcion
+    fdc_query: "yogurt, plain, whole milk"
+
+  # ---------------------------------------------------------------- bebidas
+  - slug: refresco-cola
+    name: Refresco de cola
+    category: bebida
+    aliases: [refresco, coca, coca cola, refresco de cola, soda]
+    default_portion_g: 355
+    portion_unit: vaso
+    fdc_query: "beverages, carbonated, cola, regular"
+
+  - slug: jugo-naranja
+    name: Jugo de naranja
+    category: bebida
+    aliases: [jugo de naranja, jugo, zumo de naranja]
+    default_portion_g: 248
+    portion_unit: vaso
+    fdc_query: "orange juice, raw"
+
+  - slug: agua-fruta
+    name: Agua de fruta con azúcar
+    category: bebida
+    aliases: [agua de sabor, agua fresca, agua de jamaica, agua de horchata, agua de limon]
+    default_portion_g: 240
+    portion_unit: vaso
+    fdc_query: "beverages, fruit-flavored drink, powder, prepared with water"
+
+  - slug: cafe-negro
+    name: Café negro sin azúcar
+    category: bebida
+    aliases: [cafe, cafe negro, cafe americano, cafe sin azucar]
+    default_portion_g: 237
+    portion_unit: vaso
+    fdc_query: "beverages, coffee, brewed, prepared with tap water"
+
+  # ---------------------------------------------------------------- condimentos
+  - slug: salsa-verde
+    name: Salsa verde
+    category: condimento
+    aliases: [salsa verde, salsa]
+    default_portion_g: 30
+    portion_unit: cucharada
+    fdc_query: "sauce, salsa, ready-to-serve"
+
+  - slug: salsa-roja
+    name: Salsa roja
+    category: condimento
+    aliases: [salsa roja, salsa de jitomate]
+    default_portion_g: 30
+    portion_unit: cucharada
+    fdc_query: "sauce, salsa, ready-to-serve"
+
+  - slug: azucar
+    name: Azúcar
+    category: condimento
+    aliases: [azucar, azucar blanca, cucharada de azucar]
+    default_portion_g: 12
+    portion_unit: cucharada
+    fdc_query: "sugars, granulated"
+
+  - slug: vinagre
+    name: Vinagre
+    category: condimento
+    aliases: [vinagre, vinagre de manzana]
+    default_portion_g: 15
+    portion_unit: cucharada
+    fdc_query: "vinegar, cider"
+
+# Platillos compuestos. Se modelan como recetas para poder aprender que COMPONENTE
+# mueve la glucosa, no solo que "los chilaquiles suben". Las fracciones son
+# aproximadas y editables; suman 1.0.
+recipes:
+  - slug: chilaquiles
+    name: Chilaquiles
+    category: platillo
+    aliases: [chilaquiles, chilaquiles verdes, chilaquiles rojos]
+    default_portion_g: 250
+    components:
+      - {food: totopos, fraction: 0.40}
+      - {food: salsa-verde, fraction: 0.35}
+      - {food: queso-fresco, fraction: 0.12}
+      - {food: crema, fraction: 0.13}
+
+  - slug: quesadilla
+    name: Quesadilla
+    category: platillo
+    aliases: [quesadilla, quesadillas]
+    default_portion_g: 90
+    components:
+      - {food: tortilla-maiz, fraction: 0.55}
+      - {food: queso-oaxaca, fraction: 0.45}
+
+  - slug: taco-carne
+    name: Taco de carne
+    category: platillo
+    aliases: [taco, tacos, taco de carne, tacos de carne, taco de bistec]
+    default_portion_g: 90
+    components:
+      - {food: tortilla-maiz, fraction: 0.35}
+      - {food: carne-res, fraction: 0.45}
+      - {food: cebolla, fraction: 0.10}
+      - {food: salsa-verde, fraction: 0.10}
+
+  - slug: taco-pastor
+    name: Taco al pastor
+    category: platillo
+    aliases: [taco al pastor, tacos al pastor, pastor]
+    default_portion_g: 95
+    components:
+      - {food: tortilla-maiz, fraction: 0.33}
+      - {food: carne-cerdo, fraction: 0.42}
+      - {food: cebolla, fraction: 0.10}
+      - {food: mango, fraction: 0.05}
+      - {food: salsa-roja, fraction: 0.10}
+
+  - slug: enchiladas
+    name: Enchiladas
+    category: platillo
+    aliases: [enchilada, enchiladas, enchiladas verdes, enchiladas rojas]
+    default_portion_g: 260
+    components:
+      - {food: tortilla-maiz, fraction: 0.35}
+      - {food: pollo-pechuga, fraction: 0.25}
+      - {food: salsa-verde, fraction: 0.25}
+      - {food: queso-fresco, fraction: 0.08}
+      - {food: crema, fraction: 0.07}
+
+  - slug: torta
+    name: Torta
+    category: platillo
+    aliases: [torta, tortas]
+    default_portion_g: 250
+    components:
+      - {food: bolillo, fraction: 0.40}
+      - {food: carne-cerdo, fraction: 0.30}
+      - {food: aguacate, fraction: 0.12}
+      - {food: frijol-negro, fraction: 0.10}
+      - {food: jitomate, fraction: 0.08}
+
+  - slug: pozole
+    name: Pozole
+    category: platillo
+    aliases: [pozole, pozole rojo, pozole verde, pozole blanco]
+    default_portion_g: 400
+    components:
+      - {food: elote, fraction: 0.40}
+      - {food: carne-cerdo, fraction: 0.30}
+      - {food: lechuga, fraction: 0.15}
+      - {food: cebolla, fraction: 0.08}
+      - {food: salsa-roja, fraction: 0.07}
+
+  - slug: huevos-mexicana
+    name: Huevos a la mexicana
+    category: platillo
+    aliases: [huevos a la mexicana, huevo a la mexicana]
+    default_portion_g: 180
+    components:
+      - {food: huevo, fraction: 0.60}
+      - {food: jitomate, fraction: 0.22}
+      - {food: cebolla, fraction: 0.10}
+      - {food: chile-verde, fraction: 0.08}
+
+  - slug: guacamole
+    name: Guacamole
+    category: platillo
+    aliases: [guacamole, guacamol]
+    default_portion_g: 100
+    components:
+      - {food: aguacate, fraction: 0.78}
+      - {food: jitomate, fraction: 0.12}
+      - {food: cebolla, fraction: 0.07}
+      - {food: chile-verde, fraction: 0.03}
+
+  - slug: sopa-fideo
+    name: Sopa de fideo
+    category: platillo
+    aliases: [sopa de fideo, sopa aguada, fideos]
+    default_portion_g: 250
+    components:
+      - {food: pasta, fraction: 0.55}
+      - {food: jitomate, fraction: 0.35}
+      - {food: cebolla, fraction: 0.10}
+
+  - slug: arroz-con-pollo
+    name: Arroz con pollo
+    category: platillo
+    aliases: [arroz con pollo, arroz blanco con pollo]
+    default_portion_g: 300
+    components:
+      - {food: arroz-blanco, fraction: 0.55}
+      - {food: pollo-pechuga, fraction: 0.40}
+      - {food: zanahoria, fraction: 0.05}
+
+  - slug: molletes
+    name: Molletes
+    category: platillo
+    aliases: [mollete, molletes]
+    default_portion_g: 180
+    components:
+      - {food: bolillo, fraction: 0.50}
+      - {food: frijol-negro, fraction: 0.32}
+      - {food: queso-oaxaca, fraction: 0.18}

@@ -17,6 +17,11 @@ name: glycomind
 #     docker compose exec api glycomind --help
 
 x-app: &app
+  # 'image' compartida a proposito: sin ella compose construye UNA IMAGEN POR SERVICIO
+  # (glycomind-api, glycomind-migrate, glycomind-demo). Ademas de triplicar el tiempo de
+  # build, permite que se desincronicen: 'docker compose build api' dejaria a migrate
+  # ejecutando codigo viejo y fallando por migraciones que no conoce.
+  image: glycomind-app:local
   build:
     context: .
     dockerfile: Dockerfile

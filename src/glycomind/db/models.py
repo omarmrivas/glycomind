@@ -153,6 +153,11 @@ class MealItem(Base):
     id: Mapped[uuid.UUID] = _uuid_pk()
     meal_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("meal.id", ondelete="CASCADE"))
     raw_label: Mapped[str] = mapped_column(Text, nullable=False)
+    """Lo que escribio el usuario. NUNCA se sobrescribe al resolver: es el dato crudo."""
+    food_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("food.id", ondelete="SET NULL"))
+    resolution_confidence: Mapped[float | None] = mapped_column(Float)
+    resolution_method: Mapped[str | None] = mapped_column(String(24))
+    """'exact_alias' | 'user_alias' | 'fuzzy' | 'manual'. Un fuzzy nunca se asigna solo."""
     quantity_value: Mapped[float | None] = mapped_column(Float)
     quantity_unit: Mapped[str | None] = mapped_column(String(32))
     quantity_low: Mapped[float | None] = mapped_column(Float)
@@ -163,6 +168,140 @@ class MealItem(Base):
     user_corrected: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
     meal: Mapped[Meal] = relationship(back_populates="items")
+    food: Mapped[Food | None] = relationship()
+
+
+class Food(Base):
+    """Alimento canonico.
+
+    Existe para que el motor estadistico pueda agrupar por identidad y no por cadena de
+    texto: hoy "tortillas" y "tortillas, frijoles, pollo" son grupos distintos en
+    v_food_summary, lo que hace imposible aprender nada. El modelo jerarquico de la
+    Fase 2 necesita ``food_id`` y macros como covariables, no strings.
+    """
+
+    __tablename__ = "food"
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    slug: Mapped[str] = mapped_column(String(96), unique=True, nullable=False)
+    canonical_name: Mapped[str] = mapped_column(String(160), nullable=False)
+    category: Mapped[str] = mapped_column(String(48), nullable=False)
+    is_recipe: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    """Un platillo compuesto se modela como receta con componentes, no como entrada
+    monolitica: el objetivo es aprender que COMPONENTE mueve la glucosa."""
+    default_portion_g: Mapped[float | None] = mapped_column(Float)
+    portion_unit: Mapped[str | None] = mapped_column(String(32))
+    fdc_query_hint: Mapped[str | None] = mapped_column(Text)
+    """Termino de busqueda para el importador de FoodData Central. Los macros NO se
+    escriben a mano: se importan de una fuente citable."""
+    notes: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    aliases: Mapped[list[FoodAlias]] = relationship(
+        back_populates="food", cascade="all, delete-orphan"
+    )
+    nutrients: Mapped[list[FoodNutrient]] = relationship(
+        back_populates="food", cascade="all, delete-orphan"
+    )
+
+
+class FoodAlias(Base):
+    """Como llama la gente a un alimento. Incluye plurales y regionalismos."""
+
+    __tablename__ = "food_alias"
+    __table_args__ = (
+        UniqueConstraint("normalized", "user_id", name="uq_food_alias_normalized_user"),
+        Index(
+            "ix_food_alias_trgm",
+            "normalized",
+            postgresql_using="gin",
+            postgresql_ops={"normalized": "gin_trgm_ops"},
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    food_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("food.id", ondelete="CASCADE"))
+    alias: Mapped[str] = mapped_column(String(160), nullable=False)
+    normalized: Mapped[str] = mapped_column(String(160), nullable=False)
+    user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("app_user.id", ondelete="CASCADE"))
+    """NULL = alias global del catalogo. No nulo = como lo escribe ESTE usuario."""
+    source: Mapped[str] = mapped_column(String(24), nullable=False, default="seed")
+
+    food: Mapped[Food] = relationship(back_populates="aliases")
+
+
+class FoodNutrient(Base):
+    """Composicion por 100 g. Cada valor con su fuente: nunca se inventa un macro."""
+
+    __tablename__ = "food_nutrient"
+    __table_args__ = (UniqueConstraint("food_id", "nutrient"),)
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    food_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("food.id", ondelete="CASCADE"))
+    nutrient: Mapped[str] = mapped_column(String(24), nullable=False)
+    """'carbohydrate' | 'fiber' | 'protein' | 'fat' | 'energy_kcal' | 'sugars'"""
+    amount_per_100g: Mapped[float] = mapped_column(Float, nullable=False)
+    unit: Mapped[str] = mapped_column(String(12), nullable=False)
+    source: Mapped[str] = mapped_column(String(32), nullable=False)
+    source_ref: Mapped[str | None] = mapped_column(String(120))
+    imported_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    food: Mapped[Food] = relationship(back_populates="nutrients")
+
+
+class FoodSourceMap(Base):
+    """Correspondencia con catalogos externos. Preserva la trazabilidad del dato."""
+
+    __tablename__ = "food_source_map"
+    __table_args__ = (UniqueConstraint("source", "external_id"),)
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    food_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("food.id", ondelete="CASCADE"))
+    source: Mapped[str] = mapped_column(String(32), nullable=False)
+    """'fdc' | 'openfoodfacts' | 'innsz' | 'smae' | 'imss'"""
+    external_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    external_name: Mapped[str | None] = mapped_column(Text)
+    matched_by: Mapped[str] = mapped_column(String(24), nullable=False, default="manual")
+
+
+class RecipeComponent(Base):
+    """Descomposicion de un platillo en ingredientes, con su proporcion en masa."""
+
+    __tablename__ = "recipe_component"
+    __table_args__ = (UniqueConstraint("recipe_food_id", "component_food_id"),)
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    recipe_food_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("food.id", ondelete="CASCADE"))
+    component_food_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("food.id", ondelete="CASCADE"))
+    mass_fraction: Mapped[float] = mapped_column(Float, nullable=False)
+    is_default: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+
+class UserFoodPortion(Base):
+    """La porcion habitual de ESTE usuario para ESTE alimento.
+
+    Es la mitigacion mas rentable del problema de estimar porciones: contar objetos
+    discretos ("2 tortillas") es mucho mas fiable que estimar volumen, y los mejores
+    modelos multimodales tienen ~36% de error en peso.
+    """
+
+    __tablename__ = "user_food_portion"
+    __table_args__ = (UniqueConstraint("user_id", "food_id", "label"),)
+
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("app_user.id", ondelete="CASCADE"))
+    food_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("food.id", ondelete="CASCADE"))
+    label: Mapped[str] = mapped_column(String(48), nullable=False, default="default")
+    grams: Mapped[float] = mapped_column(Float, nullable=False)
+    source: Mapped[str] = mapped_column(String(24), nullable=False, default="user_reported")
+    n_observations: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
 
 
 class MealGlucoseResponse(Base):

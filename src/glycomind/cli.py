@@ -45,9 +45,11 @@ app = typer.Typer(
 db_app = typer.Typer(help="Gestion del esquema.", no_args_is_help=True)
 user_app = typer.Typer(help="Usuarios.", no_args_is_help=True)
 meal_app = typer.Typer(help="Comidas.", no_args_is_help=True)
+food_app = typer.Typer(help="Catalogo canonico de alimentos.", no_args_is_help=True)
 app.add_typer(db_app, name="db")
 app.add_typer(user_app, name="user")
 app.add_typer(meal_app, name="meal")
+app.add_typer(food_app, name="food")
 
 console = Console()
 
@@ -229,6 +231,196 @@ def meal_import(
             existing.add(local)
             added += 1
     console.print(f"[green]{added} comidas anadidas[/green], {skipped} ya existian.")
+
+
+@food_app.command("seed")
+def food_seed() -> None:
+    """Carga el catalogo semilla de alimentos mexicanos. Idempotente."""
+    from glycomind.catalog.loader import load_seed
+
+    with db_session() as db:
+        result = load_seed(db)
+    console.print(
+        f"[green]{result.foods_created} alimentos nuevos[/green], "
+        f"{result.foods_updated} actualizados, {result.aliases_created} alias, "
+        f"{result.recipes_linked} componentes de receta."
+    )
+    for w in result.warnings:
+        console.print(f"[yellow]aviso:[/yellow] {w}")
+    console.print(
+        "\n[dim]El catalogo NO trae macronutrientes: se importan de FoodData Central "
+        "con 'glycomind food import-nutrients' para que cada cifra tenga fuente.[/dim]"
+    )
+
+
+@food_app.command("import-nutrients")
+def food_import_nutrients(
+    api_key: Annotated[
+        str, typer.Option(envvar="FDC_API_KEY", help="Clave de api.data.gov (gratuita).")
+    ],
+    slug: Annotated[list[str] | None, typer.Option(help="Limitar a estos slugs.")] = None,
+    overwrite: Annotated[bool, typer.Option(help="Reemplaza valores ya importados.")] = False,
+    limit: Annotated[int | None, typer.Option(help="Maximo de alimentos a procesar.")] = None,
+) -> None:
+    """Importa macronutrientes desde USDA FoodData Central.
+
+    Cada valor queda con su ``fdcId`` en food_source_map: ninguna cifra nutricional del
+    sistema es inventada. Limite de la API: 1000 peticiones por hora.
+    """
+    from glycomind.catalog.fdc import FdcClient, import_nutrients
+
+    with db_session() as db:
+        report = import_nutrients(
+            db,
+            FdcClient(api_key=api_key),
+            slugs=list(slug) if slug else None,
+            overwrite=overwrite,
+            limit=limit,
+        )
+
+    console.print(
+        f"[green]{report.imported} importados[/green], "
+        f"{report.skipped_existing} ya tenian datos, {report.attempted} intentos."
+    )
+    if report.not_found:
+        console.print(f"[yellow]sin coincidencia:[/yellow] {', '.join(report.not_found[:12])}")
+    for err in report.errors:
+        console.print(f"[red]error:[/red] {err}")
+
+
+@food_app.command("search")
+def food_search(
+    text: Annotated[str, typer.Argument(help="Texto libre a resolver.")],
+    email: Annotated[
+        str | None, typer.Option("--user", help="Usa tambien los alias de este usuario.")
+    ] = None,
+) -> None:
+    """Prueba el resolutor sobre un texto, sin escribir nada."""
+    from glycomind.catalog.resolver import resolve_meal_text
+
+    with db_session() as db:
+        user_id = _get_user(db, email).id if email else None
+        resolved = resolve_meal_text(db, text, user_id=user_id)
+
+        table = Table(title=f"Resolucion de: {text!r}")
+        for col in ("Item", "Cantidad", "Candidato", "Confianza", "Metodo", "Accion"):
+            table.add_column(col)
+        for item in resolved:
+            qty = (
+                f"{item.parsed.quantity_value:g} {item.parsed.quantity_unit or ''}".strip()
+                if item.parsed.quantity_value is not None
+                else "—"
+            )
+            if item.best is None:
+                table.add_row(item.parsed.label, qty, "—", "—", "—", "[red]sin resolver[/red]")
+                continue
+            action = (
+                "[green]automatico[/green]"
+                if item.best.is_auto_assignable
+                else "[yellow]requiere confirmacion[/yellow]"
+            )
+            table.add_row(
+                item.parsed.label,
+                qty,
+                item.best.canonical_name,
+                f"{item.best.confidence:.2f}",
+                item.best.method,
+                action,
+            )
+        console.print(table)
+
+
+@food_app.command("link")
+def food_link(
+    email: Annotated[str, typer.Option("--user")],
+    rebuild: Annotated[bool, typer.Option(help="Rehace los items no corregidos a mano.")] = False,
+) -> None:
+    """Convierte el texto libre de las comidas en items enlazados al catalogo."""
+    from glycomind.catalog.linking import link_user_meals
+
+    with db_session() as db:
+        user = _get_user(db, email)
+        report = link_user_meals(db, user_id=user.id, rebuild=rebuild)
+
+    table = Table(title="Enlace con el catalogo", show_header=False)
+    table.add_row("Comidas procesadas", str(report.meals_processed))
+    table.add_row("Items creados", str(report.items_created))
+    table.add_row("Asignados automaticamente", f"[green]{report.auto_assigned}[/green]")
+    table.add_row("Requieren confirmacion", f"[yellow]{report.needs_confirmation}[/yellow]")
+    table.add_row("Sin resolver", f"[red]{report.unresolved}[/red]")
+    console.print(table)
+    console.print(f"\n[bold]auto_assign_rate: {report.auto_assign_rate:.0%}[/bold]")
+
+    if report.unresolved_labels:
+        top = sorted(report.unresolved_labels.items(), key=lambda kv: -kv[1])[:10]
+        pend = Table(title="Etiquetas sin resolver mas frecuentes")
+        pend.add_column("Etiqueta")
+        pend.add_column("N", justify="right")
+        for label, count in top:
+            pend.add_row(label, str(count))
+        console.print(pend)
+        console.print(
+            "[dim]Anadelas al catalogo semilla o confirmalas con 'glycomind food pending'.[/dim]"
+        )
+
+
+@food_app.command("pending")
+def food_pending(
+    email: Annotated[str, typer.Option("--user")],
+    limit: Annotated[int, typer.Option()] = 30,
+) -> None:
+    """Lista items sin alimento asignado, con la sugerencia del resolutor."""
+    from glycomind.catalog.linking import list_pending
+
+    with db_session() as db:
+        user = _get_user(db, email)
+        pending = list_pending(db, user_id=user.id, limit=limit)
+
+    if not pending:
+        console.print("[green]No hay items pendientes.[/green]")
+        return
+    table = Table(title="Items pendientes de confirmar")
+    for col in ("Etiqueta", "Sugerencia", "Confianza", "meal_item_id"):
+        table.add_column(col)
+    for item in pending:
+        table.add_row(
+            item.raw_label,
+            item.suggestion or "[red]ninguna[/red]",
+            f"{item.confidence:.2f}" if item.confidence else "—",
+            str(item.meal_item_id),
+        )
+    console.print(table)
+
+
+@food_app.command("stats")
+def food_stats() -> None:
+    """Cobertura del catalogo: cuantos alimentos tienen macros importados."""
+    from sqlalchemy import func as sqlfunc
+
+    from glycomind.db.models import Food, FoodAlias, FoodNutrient
+
+    with db_session() as db:
+        total = db.execute(select(sqlfunc.count(Food.id))).scalar_one()
+        recipes = db.execute(
+            select(sqlfunc.count(Food.id)).where(Food.is_recipe.is_(True))
+        ).scalar_one()
+        aliases = db.execute(select(sqlfunc.count(FoodAlias.id))).scalar_one()
+        with_macros = db.execute(
+            select(sqlfunc.count(sqlfunc.distinct(FoodNutrient.food_id)))
+        ).scalar_one()
+
+    table = Table(title="Catalogo de alimentos", show_header=False)
+    table.add_row("Alimentos", str(total))
+    table.add_row("  de ellos, recetas", str(recipes))
+    table.add_row("Alias", str(aliases))
+    table.add_row("Con macronutrientes", f"{with_macros} / {total - recipes}")
+    console.print(table)
+    if with_macros == 0:
+        console.print(
+            "\n[yellow]Ningun alimento tiene macros todavia.[/yellow] Consigue una clave "
+            "gratuita en https://api.data.gov/signup/ y ejecuta:\n"
+            "  glycomind food import-nutrients --api-key TU_CLAVE"
+        )
 
 
 @app.command("analyze")

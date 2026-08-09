@@ -45,9 +45,66 @@ la tabla `meal_glucose_response` y su honestidad sobre lo que **no** se puede af
 - **Calcula** basal, Δ pico, tiempo al pico, iAUC-120/180, tiempo sobre basal, retorno a
   basal, CV y forma de curva — con partición exacta en los cruces de la basal.
 - **Reporta `pairing_valid_ratio`**, la métrica de producto de esta fase.
+- **Resuelve el texto libre a un catálogo canónico de alimentos** (78 alimentos mexicanos,
+  266 alias, 12 platillos descompuestos en ingredientes), para que el análisis agrupe por
+  identidad y no por cadena de texto.
 
 Lo que **no** hace todavía: visión de alimentos, modelo bayesiano, claims personales,
 RAG científico, recomendaciones. Están diseñados en `docs/`, no implementados.
+
+---
+
+## Catálogo de alimentos
+
+Sin catálogo, `"tortillas"` y `"tortillas, frijoles, pollo"` son grupos distintos y no se
+puede aprender nada. El catálogo convierte texto libre en `food_id`, que es lo que el
+modelo jerárquico de la Fase 2 necesita como covariable.
+
+```bash
+docker compose exec api glycomind food seed
+```
+
+```bash
+docker compose exec api glycomind food link --user tu@correo.com
+```
+
+Probar el resolutor sin escribir nada:
+
+```bash
+docker compose exec api glycomind food search "2 tortillas de maíz con frijoles y aguacate"
+```
+
+### Dos reglas del resolutor
+
+1. **Un emparejamiento aproximado nunca se asigna solo.** Solo los alias exactos se
+   aplican automáticamente; lo demás se propone y espera confirmación. Un alimento mal
+   asignado corrompe el modelo estadístico en silencio, y el silencio es peor que el hueco.
+   Los items dudosos quedan con `food_id` nulo y su sugerencia visible en
+   `glycomind food pending`.
+2. **El texto crudo del usuario nunca se pierde.** `raw_label` se conserva siempre; lo
+   que se guarda junto a él son interpretaciones anotadas con su confianza y su método.
+
+Confirmar un item enseña un alias propio del usuario, así que la próxima vez esa misma
+etiqueta se resuelve sola y de forma exacta. El catálogo mejora con el uso.
+
+### Macronutrientes
+
+**El catálogo semilla no trae macros.** Escribirlos a mano sería inventar datos
+nutricionales. Se importan de USDA FoodData Central, y cada valor queda con su `fdcId`
+en `food_source_map`:
+
+```bash
+docker compose exec api glycomind food import-nutrients --api-key TU_CLAVE
+```
+
+La clave es gratuita en [api.data.gov/signup](https://api.data.gov/signup/). Límite de la
+API: 1,000 peticiones por hora.
+
+⚠️ FoodData Central cubre mal la cocina mexicana casera. Por eso los platillos compuestos
+(chilaquiles, pozole, tacos) se modelan como **recetas con ingredientes**: los
+ingredientes sí están cubiertos, y descomponerlos es lo que permite aprender qué
+*componente* mueve la glucosa. Integrar las tablas mexicanas (INNSZ, SMAE, IMSS, Tabla
+extendida 2019) es el siguiente paso.
 
 ---
 
@@ -154,6 +211,13 @@ src/glycomind/
     metrics.py           iAUC, pico, TTP, forma de curva  ← el núcleo
     pairing.py           ¿esta ventana es atribuible a esta comida?
     pipeline.py          Orquestación → meal_glucose_response
+  catalog/
+    text.py              Parseo de texto libre: cantidades, separadores, preparación
+    resolver.py          Texto → alimento canónico (exacto + difuso con pg_trgm)
+    loader.py            Carga del catálogo semilla
+    linking.py           Enlace de comidas existentes; aprendizaje de alias
+    fdc.py               Importador de macros desde USDA FoodData Central
+    seed/foods_mx.yaml   78 alimentos mexicanos + 12 recetas
   api/main.py            API de lectura (FastAPI)
   cli.py                 CLI
 sql/views.sql            Vistas para Grafana

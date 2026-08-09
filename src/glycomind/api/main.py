@@ -85,8 +85,17 @@ class MealResponseOut(BaseModel):
 
 
 class FoodSummaryOut(BaseModel):
-    food_label: str
+    food_slug: str
+    food_name: str
+    food_category: str
     n_exposures: int
+    mean_foods_per_meal: float | None = Field(
+        None,
+        description=(
+            "Alimentos distintos por comida, en promedio. Si es alto, este alimento casi "
+            "siempre viene acompanado y su iAUC NO es atribuible a el."
+        ),
+    )
     iauc_120_median: float | None
     iauc_120_q1: float | None
     iauc_120_q3: float | None
@@ -95,6 +104,7 @@ class FoodSummaryOut(BaseModel):
     peak_delta_median: float | None
     evidence_status: str
     interpretation: str
+    confounding_warning: str | None = None
 
 
 class AnalysisOut(BaseModel):
@@ -229,10 +239,11 @@ _INTERPRETATION = {
 
 @app.get("/v1/insights/foods", response_model=list[FoodSummaryOut])
 def food_summary(db: DB, email: Annotated[str, Query()]) -> list[FoodSummaryOut]:
-    """Resumen por alimento, con el estado de evidencia SIEMPRE explicito.
+    """Resumen por alimento canonico, con el estado de evidencia SIEMPRE explicito.
 
     Nunca devuelve una media desnuda: por debajo de 8 exposiciones validas no hay
-    hallazgo que reportar, solo observaciones sueltas.
+    hallazgo que reportar, solo observaciones sueltas. Y cuando un alimento casi siempre
+    aparece acompanado, se dice: su iAUC no es suyo.
     """
     user = _user(db, email)
     rows = db.execute(
@@ -243,6 +254,41 @@ def food_summary(db: DB, email: Annotated[str, Query()]) -> list[FoodSummaryOut]
         FoodSummaryOut(
             **{k: v for k, v in row.items() if k != "user_id"},
             interpretation=_INTERPRETATION[row["evidence_status"]],
+            confounding_warning=_confounding_warning(row["mean_foods_per_meal"]),
         )
+        for row in rows
+    ]
+
+
+def _confounding_warning(mean_foods_per_meal: float | None) -> str | None:
+    if mean_foods_per_meal is None or mean_foods_per_meal < 2:
+        return None
+    return (
+        f"Este alimento aparece junto a otros {mean_foods_per_meal - 1:.1f} de media. "
+        "La respuesta glucemica corresponde a la comida COMPLETA, no a este alimento: "
+        "separar su efecto requiere una prueba aleatorizada, no mas datos observacionales."
+    )
+
+
+@app.get("/v1/insights/combinations")
+def combination_summary(db: DB, email: Annotated[str, Query()]) -> list[dict]:
+    """Resumen por combinacion exacta de alimentos.
+
+    Es la unidad menos confundida que se puede construir observacionalmente: aqui si se
+    compara lo mismo con lo mismo.
+    """
+    user = _user(db, email)
+    rows = db.execute(
+        text(
+            "SELECT * FROM v_meal_combination_summary "
+            "WHERE user_id = :uid ORDER BY n_exposures DESC"
+        ),
+        {"uid": str(user.id)},
+    ).mappings()
+    return [
+        {
+            **{k: v for k, v in row.items() if k != "user_id"},
+            "interpretation": _INTERPRETATION[row["evidence_status"]],
+        }
         for row in rows
     ]
